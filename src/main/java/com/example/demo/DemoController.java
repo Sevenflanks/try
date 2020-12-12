@@ -8,6 +8,6 @@ public class DemoController {
 
     @GetMapping("/")
     public Result get() {
-        return Result.builder().id(1L).name("Rhys").build();
+        return Result.builder().id(1L).name("Rhys").empId("132").build();
     }
 }

@@ -13,5 +13,6 @@ public class Result {
 
     Long id;
     String name;
+    String empId;
 
 }
