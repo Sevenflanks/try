@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitor
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+        - image: prom/prometheus
+          imagePullPolicy: IfNotPresent
+          name: prometheus
+          ports:
+            - name: "p9090"
+              protocol: TCP
+              containerPort: 9090
+          readinessProbe:
+            tcpSocket:
+              port: 9090
+          livenessProbe:
+            tcpSocket:
+              port: 9090
+            initialDelaySeconds: 180
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1024M
+            limits:
+              cpu: 2000m
+              memory: 2048M
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus
+        - image: grafana/grafana:6.5.0
+          imagePullPolicy: IfNotPresent
+          name: grafana
+          ports:
+            - name: "p3000"
+              protocol: TCP
+              containerPort: 3000
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 180
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1024M
+            limits:
+              cpu: 2000m
+              memory: 2048M
+        - image: prom/node-exporter:v1.0.1
+          imagePullPolicy: IfNotPresent
+          name: node-exporter
+          ports:
+            - name: "p9100"
+              protocol: TCP
+              containerPort: 9100
+          readinessProbe:
+            tcpSocket:
+              port: 9100
+          livenessProbe:
+            tcpSocket:
+              port: 9100
+            initialDelaySeconds: 180
+          resources:
+            requests:
+              cpu: 100m
+              memory: 180M
+            limits:
+              cpu: 250m
+              memory: 180M
+          volumeMounts:
+            - name: host-proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: host-sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: rootfs
+              mountPath: /rootfs
+              readOnly: true
+          args:
+            - "--path.procfs=/host/proc"
+            - "--path.sysfs=/host/sys"
+            - "--path.rootfs=/rootfs"
+            - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-conf
+        - name: host-proc
+          hostPath:
+            path: /proc
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: rootfs
+          hostPath:
+            path: /

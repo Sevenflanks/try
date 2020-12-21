@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+spec:
+  type: NodePort
+  ports:
+    - targetPort: 3000
+      port: 13000
+      nodePort: 32000

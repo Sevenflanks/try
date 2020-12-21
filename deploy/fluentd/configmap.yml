@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-conf
+data:
+  fluent.conf: |-
+    <system>
+        ignore_same_log_interval 60s
+    </system>
+    <match fluent.**>
+        # this tells fluentd to not output its log on stdout
+        @type null
+    </match>
+    <source>
+        @id kubernetes-containers.log
+        @type tail
+        path /var/log/containers/*.log
+        pos_file /var/log/containers.log.pos
+        tag kubernetes.*
+        read_from_head true
+        <parse>
+            @type json
+            time_key time
+            time_format %Y-%m-%dT%H:%M:%S.%NZ
+        </parse>
+    </source>
+    <filter kubernetes.**>
+        @id filter_kubernetes_metadata
+        @type kubernetes_metadata
+    </filter>
+    # Parse json field
+    <filter kubernetes.**>
+        @id filter_parser
+        @type parser
+        key_name log
+        reserve_data true
+        hash_value_field parsed
+        <parse>
+            @type multi_format
+            <pattern>
+                format json
+            </pattern>
+            <pattern>
+                format none
+            </pattern>
+        </parse>
+    </filter>
+    # Ref: https://github.com/uken/fluent-plugin-elasticsearch
+    <match **>
+        @type elasticsearch_dynamic
+        @id out_es
+        @log_level info
+
+        include_tag_key true
+        host "#{ENV['FLUENT_ELASTICSEARCH_HOST']}"
+        port "#{ENV['FLUENT_ELASTICSEARCH_PORT']}"
+        scheme "#{ENV['FLUENT_ELASTICSEARCH_SCHEME'] || 'http'}"
+        reload_connections "#{ENV['FLUENT_ELASTICSEARCH_RELOAD_CONNECTIONS'] || 'true'}"
+        logstash_prefix k8s-${record['kubernetes']['namespace_name']}
+        logstash_format true
+        type_name fluentd
+        # https://github.com/uken/fluent-plugin-elasticsearch#suppress_type_name
+        suppress_type_name true
+        buffer_chunk_limit "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_CHUNK_LIMIT_SIZE'] || '2M'}"
+        buffer_queue_limit "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_QUEUE_LIMIT_LENGTH'] || '32'}"
+        flush_interval "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_FLUSH_INTERVAL'] || '5s'}"
+        max_retry_wait "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_RETRY_MAX_INTERVAL'] || '30'}"
+        disable_retry_limit
+        num_threads "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_FLUSH_THREAD_COUNT'] || '8'}"
+    </match>
