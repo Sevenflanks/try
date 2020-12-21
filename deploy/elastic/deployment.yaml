@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastic
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+        - image: docker.elastic.co/elasticsearch/elasticsearch:7.10.1
+          imagePullPolicy: IfNotPresent
+          name: elasticsearch
+          ports:
+            - name: "p9200"
+              protocol: TCP
+              containerPort: 9200
+          readinessProbe:
+            tcpSocket:
+              port: 9200
+          livenessProbe:
+            tcpSocket:
+              port: 9200
+            initialDelaySeconds: 180
+          resources:
+            requests:
+              cpu: 100m
+              memory: 500M
+            limits:
+              cpu: 1000m
+              memory: 1000M
+          env:
+            - name: ES_JAVA_OPTS
+              value: "-Xms500m -Xmx500m"
+            - name: "discovery.type"
+              value: "single-node"
+        - image: docker.elastic.co/kibana/kibana:7.10.1
+          imagePullPolicy: IfNotPresent
+          name: kibana
+          ports:
+            - name: "p5601"
+              protocol: TCP
+              containerPort: 5601
+          readinessProbe:
+            tcpSocket:
+              port: 5601
+          livenessProbe:
+            tcpSocket:
+              port: 5601
+            initialDelaySeconds: 180
+          resources:
+            requests:
+              cpu: 100m
+              memory: 500M
+            limits:
+              cpu: 500m
+              memory: 500M
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: http://localhost:9200

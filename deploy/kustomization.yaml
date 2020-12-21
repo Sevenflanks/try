@@ -1,0 +1,8 @@
+commonLabels:
+  project: project-1
+namespace: project-1
+bases:
+  - ./java-test
+images:
+  - name: test-java-app
+    newTag: latest
